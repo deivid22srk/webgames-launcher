@@ -31,6 +31,8 @@ data class AppSettings(
     @SerialName("default_engine") val defaultEngine: String = "webview",
     @SerialName("https_only") val httpsOnly: Boolean = true,
     val haptics: Boolean = true,
+    /** Abrir no navegador completo quando o site exigir isolamento entre origens. */
+    @SerialName("auto_browser_isolation") val autoBrowserIsolation: Boolean = true,
     @SerialName("trusted_domains") val trustedDomains: List<String> = emptyList(),
     @SerialName("gamepad_mapping") val gamepadMapping: Map<String, String> = emptyMap(),
 )

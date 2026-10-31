@@ -104,6 +104,18 @@ fun SettingsScreen(vm: AppViewModel) {
                 checked = current.httpsOnly,
                 onChecked = { v -> update { it.copy(httpsOnly = v) } },
             )
+            SettingSwitch(
+                title = "Abrir no navegador quando o site exigir isolamento",
+                checked = current.autoBrowserIsolation,
+                onChecked = { v -> update { it.copy(autoBrowserIsolation = v) } },
+            )
+            Text(
+                "Sites com emulador (ex.: Def Jam) pedem \"isolamento entre origens\" " +
+                    "(SharedArrayBuffer), que o WebView do Android não oferece — o app abre " +
+                    "esses jogos no navegador completo (Custom Tabs/Chrome).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Text(
                 "Qualidade do fundo (wgpu): ${

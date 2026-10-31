@@ -2,8 +2,10 @@ package com.deivid22srk.webgames
 
 import com.deivid22srk.webgames.data.AppSettings
 import com.deivid22srk.webgames.data.Game
+import com.deivid22srk.webgames.ui.game.isolationSuspect
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -50,5 +52,39 @@ class ModelsTest {
         val good = Game(name = "y", url = "https://secure.example/")
         assertEquals("insecure.example", bad.host)
         assertEquals("secure.example", good.host)
+    }
+
+    @Test
+    fun settings_auto_browser_isolation_backcompat() {
+        // JSON antigo do core, sem o campo novo -> default true
+        val old = json.decodeFromString(AppSettings.serializer(), """{"theme":"dark"}""")
+        assertTrue(old.autoBrowserIsolation)
+        // com o campo novo presente
+        val off = json.decodeFromString(
+            AppSettings.serializer(),
+            """{"theme":"dark","auto_browser_isolation":false}""",
+        )
+        assertFalse(off.autoBrowserIsolation)
+    }
+
+    @Test
+    fun isolation_probe_detecta_mensagem_do_site() {
+        // mensagem real do def-jam.online em PT-BR
+        val ptBr = "\"0|Seu%20navegador%20n%C3%A3o%20consegue%20executar%20este%20jogo.%0A" +
+            "Falta%3A%20isolamento%20entre%20origens.\""
+        assertTrue(isolationSuspect(ptBr))
+        // inglês
+        val en = "\"0|Missing%3A%20cross-origin%20isolation.\""
+        assertTrue(isolationSuspect(en))
+        // menção direta ao SharedArrayBuffer
+        val sab = "\"0|SharedArrayBuffer%20is%20not%20available%20in%20your%20browser.\""
+        assertTrue(isolationSuspect(sab))
+        // página já isolada -> nada a fazer
+        assertFalse(isolationSuspect("\"1|consegue%20executar%20este%20jogo\""))
+        // página comum -> falso
+        assertFalse(isolationSuspect("\"0|Bem-vindo%20ao%20jogo!%20Toque%20para%20come%C3%A7ar.\""))
+        assertFalse(isolationSuspect(null))
+        assertFalse(isolationSuspect("null"))
+        assertFalse(isolationSuspect(""))
     }
 }

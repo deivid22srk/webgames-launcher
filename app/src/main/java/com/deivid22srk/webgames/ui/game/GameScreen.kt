@@ -1,8 +1,10 @@
 package com.deivid22srk.webgames.ui.game
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.view.Choreographer
@@ -101,10 +103,11 @@ fun GameScreen(
         return
     }
 
-    // Motor Chrome (Custom Tabs)
+    // Motor Chrome (Custom Tabs): navegador completo, com isolamento entre
+    // origens (COOP/COEP + SharedArrayBuffer) — necessário p/ jogos de emulador.
     if (game.engine == "chrome") {
         LaunchedEffect(game.id) {
-            CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(game.url))
+            openInBrowser(context, game.url)
             onExit()
         }
         Box(Modifier.fillMaxSize().background(Color.Black))
@@ -114,13 +117,39 @@ fun GameScreen(
     var controlsEnabled by rememberSaveable { mutableStateOf(true) }
     var fpsVisible by rememberSaveable { mutableStateOf(settings?.fpsOverlay ?: false) }
     var webError by remember { mutableStateOf<String?>(null) }
+    var needsRealBrowser by remember { mutableStateOf(false) }
+    var isolationDismissed by remember { mutableStateOf(false) }
+    var isolationAutoOpened by remember { mutableStateOf(false) }
     var loadingProgress by remember { mutableIntStateOf(0) }
     var fps by remember { mutableIntStateOf(0) }
     val sessionStart = remember { SystemClock.elapsedRealtime() }
 
     val webView = remember {
-        buildWebView(context, settings?.httpsOnly ?: true) { err -> webError = err }
+        buildWebView(
+            context,
+            settings?.httpsOnly ?: true,
+            onIsolationSuspect = {
+                if (!isolationDismissed) needsRealBrowser = true
+            },
+        ) { err -> webError = err }
             .also { it.loadUrl(game.url) }
+    }
+
+    // Site pediu isolamento entre origens: abre no navegador completo
+    // automaticamente (padrão) e encerra a sessão WebView.
+    val autoBrowser = settings?.autoBrowserIsolation ?: true
+    LaunchedEffect(needsRealBrowser, autoBrowser) {
+        if (needsRealBrowser && !isolationDismissed && autoBrowser && !isolationAutoOpened) {
+            isolationAutoOpened = true
+            Toast.makeText(
+                context,
+                "Este site exige isolamento entre origens (SharedArrayBuffer), " +
+                    "indisponível no WebView — abrindo no navegador.",
+                Toast.LENGTH_LONG,
+            ).show()
+            openInBrowser(context, game.url)
+            onExit()
+        }
     }
 
     // ---- sessão + imersão ----
@@ -135,6 +164,9 @@ fun GameScreen(
             insetsController?.show(WindowInsetsCompat.Type.systemBars())
             val secs = ((SystemClock.elapsedRealtime() - sessionStart) / 1000).toInt()
             vm.recordSession(gameId, secs)
+            (webView.parent as? ViewGroup)?.removeView(webView)
+            webView.removeCallbacks(null)
+            runCatching { webView.destroy() }
         }
     }
 
@@ -228,6 +260,45 @@ fun GameScreen(
             )
         }
 
+        // aviso: o site exige isolamento entre origens (navegador completo)
+        if (needsRealBrowser && !isolationDismissed && !autoBrowser) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        "Este jogo precisa de um navegador completo",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        "O site pede \"isolamento entre origens\" (SharedArrayBuffer). O WebView do " +
+                            "Android não oferece isso — limitação conhecida do Chromium " +
+                            "(issues.chromium.org/40914606). Abra no Chrome/Edge, ou defina o motor " +
+                            "deste jogo como \"chrome\" no editor para abrir direto.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        androidx.compose.material3.Button(onClick = {
+                            openInBrowser(context, game.url)
+                        }) { Text("Abrir no navegador") }
+                        androidx.compose.material3.OutlinedButton(onClick = {
+                            isolationDismissed = true
+                            needsRealBrowser = false
+                        }) { Text("Continuar assim") }
+                        androidx.compose.material3.TextButton(onClick = onExit) {
+                            Text("Voltar")
+                        }
+                    }
+                }
+            }
+        }
+
         // banner offline / erro
         webError?.let { err ->
             Card(
@@ -254,9 +325,8 @@ fun GameScreen(
                             webView.reload()
                         }) { Text("Tentar novamente") }
                         androidx.compose.material3.OutlinedButton(onClick = {
-                            CustomTabsIntent.Builder().build()
-                                .launchUrl(context, Uri.parse(game.url))
-                        }) { Text("Abrir no Chrome") }
+                            openInBrowser(context, game.url)
+                        }) { Text("Abrir no navegador") }
                         androidx.compose.material3.TextButton(onClick = onExit) {
                             Text("Voltar")
                         }
@@ -299,8 +369,7 @@ fun GameScreen(
                 Text("PNG", style = MaterialTheme.typography.labelLarge)
             }
             IconButton(onClick = {
-                CustomTabsIntent.Builder().build()
-                    .launchUrl(context, Uri.parse(game.url))
+                openInBrowser(context, game.url)
             }) { Text("Chrome", style = MaterialTheme.typography.labelLarge) }
             IconButton(onClick = onExit) {
                 Icon(Icons.Filled.Close, contentDescription = "sair do jogo")
@@ -379,6 +448,7 @@ private fun VirtualControls(
 private fun buildWebView(
     context: Context,
     httpsOnly: Boolean,
+    onIsolationSuspect: () -> Unit,
     onError: (String?) -> Unit,
 ): WebView {
     val compatScript = NativeCore.compatScript() ?: ""
@@ -407,6 +477,24 @@ private fun buildWebView(
                 view.evaluateJavascript(compatScript, null)
                 view.evaluateJavascript(inputScript, null)
                 onError(null)
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                // Probe de isolamento entre origens: crossOriginIsolated + texto
+                // visível da página (sites de emulador declaram a exigência no corpo).
+                val probe = "(function(){try{return (window.crossOriginIsolated?1:0)+'|'+" +
+                    "encodeURIComponent(((document.body&&document.body.innerText)||'').slice(0,4000));" +
+                    "}catch(e){return '0|';}})()"
+                val run = Runnable {
+                    runCatching {
+                        view.evaluateJavascript(probe) { raw ->
+                            if (isolationSuspect(raw)) onIsolationSuspect()
+                        }
+                    }
+                }
+                view.postDelayed(run, 1_500)
+                view.postDelayed(run, 4_000)
             }
 
             override fun shouldOverrideUrlLoading(
@@ -477,6 +565,29 @@ private fun buildWebView(
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 // progresso simples exposto via callback de erro nulo
             }
+        }
+    }
+}
+
+/**
+ * Abre a URL no navegador completo: primeiro Chrome Custom Tabs (mesma engine
+ * do Chrome, com suporte a COOP/COEP + SharedArrayBuffer); sem Custom Tabs,
+ * usa o navegador padrão via Intent.
+ */
+internal fun openInBrowser(context: Context, url: String) {
+    val uri = Uri.parse(url)
+    try {
+        CustomTabsIntent.Builder()
+            .setShowTitle(true)
+            .build()
+            .launchUrl(context, uri)
+    } catch (e: ActivityNotFoundException) {
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (e2: Exception) {
+            Toast.makeText(context, "Nenhum navegador (Chrome/Edge) encontrado.", Toast.LENGTH_LONG).show()
         }
     }
 }

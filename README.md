@@ -74,6 +74,18 @@ de CI (ou `KEYSTORE_BASE64`+senhas nos secrets do GitHub — nunca versionados).
 (NDK r29, cargo-ndk, Gradle, testes unitários, lint) com **artefatos de APK**
 e **GitHub Release automático em tags `v*`**.
 
+## Solução de problemas
+
+- **"Falta: isolamento entre origens"** (ex.: def-jam.online): o WebView do
+  Android não suporta `SharedArrayBuffer`/COOP/COEP — limitação do Chromium
+  ([40914606](https://issues.chromium.org/issues/40914606), "Won't fix"). O app
+  detecta a mensagem do site automaticamente e abre o jogo no navegador
+  completo (Custom Tabs/Chrome), onde o emulador funciona. Você também pode
+  definir o **motor "chrome"** do jogo no editor ou desligar a abertura
+  automática em **Ajustes** (ADR-011).
+- **HTTP 403/503** (proteção anti-bot/Cloudflare): use o botão "Chrome" na
+  barra do jogo (ADR-010).
+
 ## Documentação
 
 | Doc | Conteúdo |

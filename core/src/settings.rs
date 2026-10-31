@@ -46,6 +46,9 @@ pub struct AppSettings {
     pub default_engine: String,
     pub https_only: bool,
     pub haptics: bool,
+    /// abrir automaticamente no navegador completo quando o site exigir
+    /// isolamento entre origens (SharedArrayBuffer)
+    pub auto_browser_isolation: bool,
     pub trusted_domains: Vec<String>,
     pub gamepad_mapping: GamepadMapping,
 }
@@ -60,6 +63,7 @@ impl Default for AppSettings {
             default_engine: "webview".into(),
             https_only: true,
             haptics: true,
+            auto_browser_isolation: true,
             trusted_domains: vec![
                 "def-jam.online".into(),
                 "openhaloce.com".into(),
@@ -104,6 +108,7 @@ mod tests {
         assert!(s.is_trusted("sub.play2048.co"));
         assert!(!s.is_trusted("evil.example.org"));
         assert!(s.haptics);
+        assert!(s.auto_browser_isolation);
     }
 
     #[test]

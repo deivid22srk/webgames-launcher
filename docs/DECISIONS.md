@@ -102,3 +102,35 @@ oferece: detecção de 403/406/503 com mensagem amigável, botão "Abrir no
 Chrome" no card de erro e ação "Chrome" na toolbar (Custom Tabs). O Chrome
 também é o caminho para jogos que exigem WebGPU quando a WebView do sistema
 não o expõe (`navigator.gpu` ausente) — diagnosticável na tela de Diagnóstico.
+
+## ADR-011 — Isolamento entre origens (SharedArrayBuffer): jogos de emulador abrem no navegador
+**Data:** 2026-11-01 (reporte real: def-jam.online exibia "Falta: isolamento
+entre origens" ao tocar em Jogar).
+**Estado:** aceito.
+
+O WebView do Android **não suporta isolamento entre origens de forma alguma** —
+um processo renderer por app, COOP/COEP não processados,
+`SharedArrayBuffer`/`crossOriginIsolated` indisponíveis mesmo com os headers
+corretos do site (issues.chromium.org/40914606, "Won't fix — working as
+intended", ainda confirmado em 2025). Jogos com emulador WASM multithread
+(Def Jam, PS2/PSP via EmulatorJS etc.) exigem esse recurso e não podem rodar
+no WebView. Injetar COOP/COEP via `shouldInterceptRequest` não resolve (o
+WebView ignora); coi-serviceworker também não (precisa de SAB no worker).
+
+Estratégia em camadas:
+1. **Motor por jogo** (já existia): `engine: chrome` abre via Custom Tabs
+   direto, sem passar pela WebView.
+2. **Detecção automática**: após `onPageFinished`, um probe JS (aos 1,5 s e
+   4 s) lê `window.crossOriginIsolated` e o texto visível da página
+   (`document.body.innerText`, 4 KB, URL-encoded). Se o site declara exigir
+   isolamento/SharedArrayBuffer (marcadores PT/EN/ES em `IsolationProbe.kt`,
+   com folding de acentos e testes unitários), o app:
+   - padrão (`auto_browser_isolation: true`): toast explicativo + abre a URL
+     em Custom Tabs (fallback `ACTION_VIEW`) e encerra a sessão WebView;
+   - opção desligada: card explicativo com "Abrir no navegador".
+3. **Config**: novo switch em Ajustes; campo `auto_browser_isolation` no
+   `AppSettings` Kotlin e Rust (`#[serde(default)]`, retrocompatível).
+
+Custom Tabs usam o Chrome completo (processo próprio do navegador), então o
+SAB funciona com os headers que o próprio site já envia. Limitação de
+plataforma documentada — não é bug do app.
