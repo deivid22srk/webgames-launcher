@@ -125,8 +125,9 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
     // borda clara quando pressionado + anel externo
     let ring = smoothstep(4.0, 0.0, abs(d - 2.5)) * (0.35 + 0.4 * in.pressed);
     let fill = smoothstep(2.5, -2.0, d) * (0.28 + 0.45 * in.pressed);
-    let a = clamp(fill + ring, 0.0, 1.0) * alpha_edge;
+    let a = clamp(fill + ring, 0.0, 1.0) * alpha_edge * in.color.a;
     let col = mix(in.color.rgb, vec3<f32>(1.0), in.pressed * 0.25);
-    return vec4<f32>(col, a * in.color.a);
+    // saída premultiplicada (composição correta sobre o jogo)
+    return vec4<f32>(col * a, a);
 }
 "#;

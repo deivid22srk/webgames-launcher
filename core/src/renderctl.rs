@@ -122,6 +122,7 @@ impl RenderController {
                             std::thread::sleep(std::time::Duration::from_millis(40));
                             continue;
                         }
+                        let frame_start = std::time::Instant::now();
                         let (w, h) = *size.lock().unwrap_or_else(|e| e.into_inner());
                         let params = webgames_renderer::FrameParams {
                             quality: quality.load(Ordering::Relaxed),
@@ -137,6 +138,13 @@ impl RenderController {
                         if let Err(e) = renderer.render_if_resized(w, h, &params) {
                             log::warn!("render parou: {e}");
                             break;
+                        }
+                        // pacing ~66 fps: evita starvation do BufferQueue do
+                        // TextureView (dequeueBuffer timed out em alguns SoCs)
+                        let min_frame = std::time::Duration::from_millis(15);
+                        let elapsed = frame_start.elapsed();
+                        if elapsed < min_frame {
+                            std::thread::sleep(min_frame - elapsed);
                         }
                     }
                     Ok(())

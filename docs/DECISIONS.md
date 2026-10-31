@@ -76,3 +76,29 @@ UniFFI gera bindings e build steps extras (KSP/native bridge); para ~30
 funções JSON-in/JSON-out, JNI manual é direto, sem geração de código e com
 menos risco de build. jni 0.22 (`EnvUnowned`/`Env`/`ErrorPolicy`) validado
 com probe de compilação.
+
+## ADR-009 — Alpha premultiplicado + frame pacing no overlay wgpu
+**Data:** 2026-11-01 (após teste em Motorola edge 30 fusion / Android 14).
+**Estado:** aceito.
+
+Sintomas no primeiro APK: overlay de controles cobria o jogo com fundo roxo
+(1º quadro com hud_mode errado) e depois ficava preto (alpha mode Opaque em
+SurfaceTexture); `dequeueBuffer timed out` no BufferQueue com travadas de 2 s
+no arranque. Correções:
+- `CompositeAlphaMode::PreMultiplied` na surface + HUD shader emitindo cor
+  premultiplicada com blend `One / OneMinusSrcAlpha`; clear premultiplicado.
+- `wgpuSetHudMode` chamado **antes** do `wgpuStart` (1º quadro transparente).
+- Frame pacing (~66 fps) no thread de render para não starvar o BufferQueue
+  do TextureView.
+- Cartões da home usam forma estática; morphing contínuo só em UMA decoração
+  do cabeçalho (jank de 118 frames eliminado).
+
+## ADR-010 — Sites com proteção anti-bot (Cloudflare): fallback Chrome
+**Estado:** aceito.
+
+Alguns jogos (ex.: Drift Hunters) retornam HTTP 403/503 para WebView
+("You are not allowed to use this site"). O app **não contorna** proteções —
+oferece: detecção de 403/406/503 com mensagem amigável, botão "Abrir no
+Chrome" no card de erro e ação "Chrome" na toolbar (Custom Tabs). O Chrome
+também é o caminho para jogos que exigem WebGPU quando a WebView do sistema
+não o expõe (`navigator.gpu` ausente) — diagnosticável na tela de Diagnóstico.

@@ -164,6 +164,14 @@ fun DiagnosticsScreen(vm: AppViewModel) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
 
+            InfoCard(
+                title = "Sobre WebGPU nos jogos",
+                body = "Os jogos rodam na WebView do sistema (Chromium). Se o teste acima " +
+                    "mostrar "navigator.gpu ausente" e o jogo exigir WebGPU, use o motor " +
+                    "Chrome (Ajustes → Motor padrão, ou o botão Chrome na barra do jogo): " +
+                    "o Chrome para Android tem WebGPU desde a versão 121.",
+            )
+
             Text(
                 "O diagnóstico não envia dados para a internet; tudo roda no dispositivo.",
                 style = MaterialTheme.typography.labelMedium,

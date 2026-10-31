@@ -23,6 +23,8 @@ renderização **WebGPU (wgpu 30)** integrada via JNI.
   gamepad físico → Gamepad API, FPS overlay, captura de tela.
 - 🔬 **Diagnóstico WebGPU**: adaptador nativo (backend Vulkan/GLES, limites) via
   wgpu + suporte WebGPU da WebView via `navigator.gpu`.
+- 🌐 **Fallback Chrome**: sites com proteção anti-bot (403) ou jogos que exigem
+  WebGPU podem ser abertos no Chrome (Custom Tabs) com um toque.
 - 🧪 **Fase B (experimental)**: runner WASM real em Rust (wasmi 2.0) com
   benchmark visível no app — fundação do motor experimental, sem quebrar a
   Fase A.

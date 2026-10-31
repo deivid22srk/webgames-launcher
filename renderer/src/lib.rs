@@ -119,6 +119,16 @@ impl GpuRenderer {
             .first()
             .copied()
             .unwrap_or(wgpu::TextureFormat::Rgba8Unorm);
+        // TextureView/SurfaceTexture é composto como premultiplied no Android;
+        // overlay translúcido (HUD) fica invisível (não preto) com PreMultiplied.
+        let alpha_mode = if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::PreMultiplied)
+        {
+            wgpu::CompositeAlphaMode::PreMultiplied
+        } else {
+            caps.alpha_modes[0]
+        };
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -126,7 +136,7 @@ impl GpuRenderer {
             height: height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             color_space: wgpu::SurfaceColorSpace::Auto,
-            alpha_mode: caps.alpha_modes[0],
+            alpha_mode,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
@@ -248,7 +258,19 @@ impl GpuRenderer {
                 entry_point: Some("fs"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    // src já sai premultiplicado do shader (One / OneMinusSrcAlpha)
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                    }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -451,12 +473,22 @@ impl GpuRenderer {
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.05,
-                            g: 0.05,
-                            b: 0.09,
-                            a: if params.hud_mode { 0.0 } else { 1.0 },
-                        }),
+                        load: if params.hud_mode {
+                            // premultiplied: rgb precisa ser 0 quando alpha = 0
+                            wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 0.0,
+                            })
+                        } else {
+                            wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.05,
+                                g: 0.05,
+                                b: 0.09,
+                                a: 1.0,
+                            })
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],

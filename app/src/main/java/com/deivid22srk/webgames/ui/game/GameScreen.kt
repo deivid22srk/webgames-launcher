@@ -253,7 +253,11 @@ fun GameScreen(
                             webError = null
                             webView.reload()
                         }) { Text("Tentar novamente") }
-                        androidx.compose.material3.OutlinedButton(onClick = onExit) {
+                        androidx.compose.material3.OutlinedButton(onClick = {
+                            CustomTabsIntent.Builder().build()
+                                .launchUrl(context, Uri.parse(game.url))
+                        }) { Text("Abrir no Chrome") }
+                        androidx.compose.material3.TextButton(onClick = onExit) {
                             Text("Voltar")
                         }
                     }
@@ -294,6 +298,10 @@ fun GameScreen(
             IconButton(onClick = { takeScreenshot(webView, context) }) {
                 Text("PNG", style = MaterialTheme.typography.labelLarge)
             }
+            IconButton(onClick = {
+                CustomTabsIntent.Builder().build()
+                    .launchUrl(context, Uri.parse(game.url))
+            }) { Text("Chrome", style = MaterialTheme.typography.labelLarge) }
             IconButton(onClick = onExit) {
                 Icon(Icons.Filled.Close, contentDescription = "sair do jogo")
             }
@@ -425,6 +433,23 @@ private fun buildWebView(
             ) {
                 if (request.isForMainFrame) {
                     onError(error.description?.toString() ?: "erro de rede")
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView,
+                request: WebResourceRequest,
+                errorResponse: android.webkit.WebResourceResponse,
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                if (request.isForMainFrame) {
+                    val code = errorResponse.statusCode
+                    if (code == 403 || code == 406 || code == 503) {
+                        onError(
+                            "O site recusou o navegador embutido (HTTP $code — proteção anti-bot/Cloudflare). " +
+                                "Use o botão Chrome na barra abaixo.",
+                        )
+                    }
                 }
             }
         }

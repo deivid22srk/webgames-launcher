@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.toShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -99,11 +100,23 @@ fun HomeScreen(
         ) {
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                 Column(modifier = Modifier.padding(top = 24.dp)) {
-                    Text(
-                        "WebGames",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val headerBlob = rememberMorphingShape(
+                            MaterialShapes.Cookie9Sided,
+                            MaterialShapes.Sunny,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(MaterialTheme.colorScheme.primary, headerBlob),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "WebGames",
+                            style = MaterialTheme.typography.displayMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
                     val stats = vm.stats.collectAsState().value
                     Text(
                         text = stats?.let {
@@ -223,10 +236,8 @@ fun GameCard(
     onEditGame: (String) -> Unit,
     vm: AppViewModel,
 ) {
-    val morphShape = rememberMorphingShape(
-        MaterialShapes.Cookie9Sided,
-        MaterialShapes.Sunny,
-    )
+    // forma estática por cartão: morphing por frame em N cartões derruba a UI
+    val cardShape = remember { MaterialShapes.Cookie9Sided.toShape() }
     Card(
         onClick = { onOpenGame(game.id) },
         modifier = Modifier
@@ -247,7 +258,7 @@ fun GameCard(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(72.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, morphShape),
+                        .background(MaterialTheme.colorScheme.primaryContainer, cardShape),
                 )
                 WebGameImage(
                     url = game.iconUrl,

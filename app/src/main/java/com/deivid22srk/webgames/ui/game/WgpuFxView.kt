@@ -30,8 +30,11 @@ class WgpuFxView(
     override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
         val s = Surface(st)
         surface = s
-        NativeCore.wgpuStart(s, width, height, qualityProvider())
+        // hudMode ANTES do start: o primeiro quadro já nasce transparente
+        // (sem isso, o fundo opaco aparece sobre o jogo por um instante)
         NativeCore.wgpuSetHudMode(hudMode)
+        NativeCore.wgpuSetQuality(qualityProvider())
+        NativeCore.wgpuStart(s, width, height, qualityProvider())
         NativeCore.wgpuSetVisible(true)
     }
 
