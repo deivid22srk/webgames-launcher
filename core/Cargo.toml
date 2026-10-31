@@ -1,0 +1,25 @@
+[package]
+name = "webgames-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "webgames_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+webgames-renderer = { path = "../renderer" }
+webgames-experimental = { path = "../experimental-engine" }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+pollster = { workspace = true }
+raw-window-handle = { workspace = true }
+jni = "0.22.4"
+ureq = "3.5.0"
+url = "2"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15.1"
