@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["core", "renderer", "experimental-engine"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["deivid22srk"]
+
+[workspace.dependencies]
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pollster = "1.0.1"
+raw-window-handle = "0.6.2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

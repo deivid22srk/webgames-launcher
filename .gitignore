@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+app/build/
+local.properties
+
+# Rust
+target/
+
+# Rust->Android build outputs (gerados pelo cargo-ndk)
+app/build/rust/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystores e segredos — NUNCA versionar
+*.jks
+*.keystore
+keystore.properties
+KEYSTORE*
