@@ -133,15 +133,15 @@ impl Catalog {
 mod tests {
     use super::*;
 
-    fn tmpdir() -> std::path::PathBuf {
-        let d = std::env::temp_dir().join(format!("wgl-test-{}", std::process::id()));
+    fn tmpdir(tag: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("wgl-test-{}-{tag}", std::process::id()));
         let _ = std::fs::create_dir_all(&d);
         d
     }
 
     #[test]
     fn seed_and_persist() {
-        let dir = tmpdir();
+        let dir = tmpdir("seed");
         let mut cat = Catalog::load(&dir).unwrap();
         assert!(cat.games.len() >= 5);
         assert!(cat.games.iter().any(|g| g.url.contains("def-jam.online")));
@@ -188,12 +188,12 @@ mod tests {
             last_played_ms: None,
             added_ms: 0,
         };
-        assert!(cat.add(&tmpdir(), g).is_err());
+        assert!(cat.add(&tmpdir("http"), g).is_err());
     }
 
     #[test]
     fn search_matches_host() {
-        let cat = Catalog::load(&tmpdir()).unwrap();
+        let cat = Catalog::load(&tmpdir("search")).unwrap();
         let r = cat.search("def-jam");
         assert!(r.iter().any(|g| g.name.contains("Def Jam")));
     }
