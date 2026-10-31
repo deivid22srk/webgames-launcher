@@ -237,7 +237,7 @@ fun GameCard(
     vm: AppViewModel,
 ) {
     // forma estática por cartão: morphing por frame em N cartões derruba a UI
-    val cardShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val cardShape = MaterialShapes.Cookie9Sided.toShape()
     Card(
         onClick = { onOpenGame(game.id) },
         modifier = Modifier
